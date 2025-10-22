@@ -1,0 +1,136 @@
+-- LocalScript in StarterPlayerScripts
+local Players = game:GetService("Players")
+local GuiService = game:GetService("GuiService")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+local savedPosition = nil -- Variable to store the saved position
+local targetSpeed = 99 -- Desired speed
+local speedLoopActive = false -- Flag to control speed loop
+
+-- Function to make all ProximityPrompts instant
+local function MakePromptsInstant()
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            obj.HoldDuration = 0 -- Set hold duration to 0 for instant trigger
+        end
+    end
+    
+    Workspace.DescendantAdded:Connect(function(obj)
+        if obj:IsA("ProximityPrompt") then
+            obj.HoldDuration = 0
+        end
+    end)
+end
+
+-- Function to create a cool-looking GUI button
+local function CreateButton(name, position, text, callback)
+    local screenGui = player:WaitForChild("PlayerGui"):FindFirstChild("CoolKidGui") or Instance.new("ScreenGui")
+    screenGui.Name = "CoolKidGui"
+    screenGui.Parent = player.PlayerGui
+    screenGui.ResetOnSpawn = false
+
+    local button = Instance.new("TextButton")
+    button.Name = name
+    button.Size = UDim2.new(0, 120, 0, 50)
+    button.Position = position
+    button.Text = text
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextSize = 18
+    button.Font = Enum.Font.Arcade -- Bold, retro "coolkid" font
+    button.BackgroundColor3 = Color3.fromRGB(0, 170, 255) -- Neon blue
+    button.BorderSizePixel = 0
+    button.BackgroundTransparency = 0.1
+
+    -- Add rounded corners
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = button
+
+    -- Add neon glow effect (using UIStroke)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(0, 255, 255)
+    stroke.Thickness = 2
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = button
+
+    -- Add gradient for extra style
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 170, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 255, 127))
+    })
+    gradient.Rotation = 45
+    gradient.Parent = button
+
+    button.Parent = screenGui
+
+    button.MouseButton1Click:Connect(callback)
+end
+
+-- Function to set and maintain player speed
+local function MaintainSpeed()
+    if speedLoopActive then return end -- Prevent multiple loops
+    speedLoopActive = true
+    RunService.Heartbeat:Connect(function()
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            if player.Character.Humanoid.WalkSpeed ~= targetSpeed then
+                player.Character.Humanoid.WalkSpeed = targetSpeed
+            end
+        end
+    end)
+end
+
+-- Function to toggle speed maintenance
+local function ToggleSpeed()
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        targetSpeed = 99
+        MaintainSpeed()
+        print("Speed set to 99 and maintained!")
+    else
+        print("Character or Humanoid not found!")
+    end
+end
+
+-- Function to save the player's current position
+local function SavePosition()
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        savedPosition = player.Character.HumanoidRootPart.CFrame
+        print("Position saved at: " .. tostring(savedPosition.Position))
+    else
+        print("Character or HumanoidRootPart not found!")
+    end
+end
+
+-- Function to teleport to the saved position and fix camera
+local function TeleportToSaved()
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and savedPosition then
+        -- Teleport using CFrame
+        player.Character.HumanoidRootPart.CFrame = savedPosition
+        -- Force camera to follow
+        if camera then
+            camera.CameraType = Enum.CameraType.Custom
+            camera.CameraSubject = player.Character.Humanoid
+            local newCameraCFrame = CFrame.new(savedPosition.Position + Vector3.new(0, 5, 10), savedPosition.Position)
+            camera.CFrame = newCameraCFrame
+            task.wait() -- Ensure teleport completes
+            camera.CFrame = newCameraCFrame
+        end
+        print("Teleported to saved position!")
+    else
+        print("No saved position, character, or HumanoidRootPart not found!")
+    end
+end
+
+-- Create cool GUI buttons on the right side
+local screenWidth = GuiService:GetScreenResolution().X
+CreateButton("SpeedButton", UDim2.new(0, screenWidth - 130, 0, 10), "SPEED 99", ToggleSpeed)
+CreateButton("SavePositionButton", UDim2.new(0, screenWidth - 130, 0, 70), "SAVE SPOT", SavePosition)
+CreateButton("TeleportButton", UDim2.new(0, screenWidth - 130, 0, 130), "TP TO SAVE", TeleportToSaved)
+
+-- Initialize instant ProximityPrompts
+MakePromptsInstant()
+
+print("Script loaded: Instant ProximityPrompts, Cool Speed/TP Buttons active!")
